@@ -32,11 +32,7 @@ $(() => {
 				dirName = matches[0];
 			}
 
-			// TODO: set data to something after changing extract controller
 			const data = {
-				nameOfFile: filename,
-				directory: context.dir,
-				external: context.fileInfoModel.attributes.mountType && context.fileInfoModel.attributes.mountType.startsWith("external") ? 1 : 0,
 				sourcePath: context.dir ? context.dir + '/' + filename : filename,
 				targetDirName: dirName,
 				type: type
