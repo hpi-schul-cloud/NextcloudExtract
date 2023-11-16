@@ -129,7 +129,7 @@ $(() => {
 			});
 
 			// TAR
-			const types = ['application/x-tar', 'application/x-7z-compressed', 'application/x-bzip2', 'application/x-deb', 'application/x-gzip'];
+			const types = ['application/x-tar', 'application/x-7z-compressed', 'application/x-bzip2', 'application/x-deb', 'application/x-gzip', 'application/x-compressed'];
 			types.forEach(type => {
 				OCA.Files.fileActions.registerAction({
 					name: 'extractOthers',
