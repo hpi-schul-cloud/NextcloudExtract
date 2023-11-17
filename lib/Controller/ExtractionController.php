@@ -87,7 +87,6 @@ class ExtractionController extends Controller {
 	 */
 	private function getAbsoluteFilePath($sourcePath): array|string {
 		$absoluteFilePath = Filesystem::getView()->getLocalFile($sourcePath);
-		$this->logger->error($absoluteFilePath);
 		if ($absoluteFilePath === null) {
 			return array('code' => StatusCode::ERROR, 'desc' => $this->l->t('Archive file not found'));
 		}
