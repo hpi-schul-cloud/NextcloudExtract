@@ -79,7 +79,13 @@ class ExtractionController extends Controller {
 		\OC_Util::setupFS($this->userId);
 	}
 
-	private function getAbsoluteFilePath($sourcePath) {
+	/**
+	 * Get the absolute path to the file.
+	 *
+	 * @param $sourcePath
+	 * @return string | array with the absolute path to the file or an array error message
+	 */
+	private function getAbsoluteFilePath($sourcePath): array|string {
 		$absoluteFilePath = Filesystem::getView()->getLocalFile($sourcePath);
 		$this->logger->error($absoluteFilePath);
 		if ($absoluteFilePath === null) {
@@ -93,10 +99,9 @@ class ExtractionController extends Controller {
 	 *
 	 * @param string $extractTo The local file-system path of the directory
 	 *  with the extracted data, i.e. this is the OS path.
-	 *
 	 */
 	private function postExtract(string $internalTargetPath, string $extractTo, bool $isExternal) {
-		$iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($extractTo));
+		$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($extractTo));
 		foreach ($iterator as $file) {
 			/** @var \SplFileInfo $file */
 			if (Filesystem::isFileBlacklisted($file->getBasename())) {
@@ -117,7 +122,7 @@ class ExtractionController extends Controller {
 	 * Moves the locally generated files from the /tmp/ folder from this transaction to the nextcloud storage.
 	 * This is the case if the file for this transaction is from an external storage (S3)
 	 */
-	public function moveFromTmp(): void {
+	private function moveFromTmp(): void {
 		$transactionDir = '/tmp/' . $this->transactionId . '/';
 
 		$it = new RecursiveDirectoryIterator($transactionDir, FilesystemIterator::SKIP_DOTS);
@@ -186,7 +191,10 @@ class ExtractionController extends Controller {
 		// Path to the target folder in Nextclouds internal filesystem
 		$internalTargetPath = $this->getInternalTargetPath($internalDir, $targetDirName);
 		if (!$internalTargetPath) {
-			return new DataResponse(array('code' => StatusCode::ERROR, 'desc' => $this->l->t('Directory already exists')));
+			return new DataResponse(array(
+				'code' => StatusCode::ERROR,
+				'desc' => $this->l->t('Directory already exists')
+			));
 		}
 
 		$extractTo = $this->getExtractionPath($absoluteFilePath, $internalDir, $targetDirName, $isExternal);
@@ -257,7 +265,15 @@ class ExtractionController extends Controller {
 		return trim(str_replace('../', '', $dir));
 	}
 
-	private function getInternalTargetPath(string $internalDir, string $targetDirName): string | null {
+	/**
+	 * Returns the path to the target folder in Nextcloud's internal filesystem
+	 *
+	 * @param string $internalDir
+	 * @param string $targetDirName
+	 *
+	 * @return string|null internal target path
+	 */
+	private function getInternalTargetPath(string $internalDir, string $targetDirName): string|null {
 		// Path to the target folder in Nextcloud's internal filesystem
 		$internalTargetPath = "$internalDir/$targetDirName";
 
@@ -369,6 +385,7 @@ class ExtractionController extends Controller {
 
 	/**
 	 * Checks if the file at the given path has the ending .tar.*
+	 *
 	 * @param string $path path to the file
 	 * @return bool is tar.gz
 	 */
@@ -379,6 +396,7 @@ class ExtractionController extends Controller {
 
 	/**
 	 * Returns the name of the file at the given path without its extension
+	 *
 	 * @param string $path path to the file
 	 * @return string file name without extension
 	 */
