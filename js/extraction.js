@@ -1,146 +1,105 @@
 $(() => {
-	const actionsExtract = {
-		createDialog: function (title, init, callback) {
-			return OC.dialogs.confirmHtml(
-				'',
-				title,
-				callback,
-				true
-			).then(() => {
-				const $dialog = $('.oc-dialog:visible');
-				const $content = $('.oc-dialog-content');
-				const $buttons = $('.oc-dialog-buttonrow').find('button');
+    const actionsExtract = {
+        createDialog: function (title, init, callback) {
+            return OC.dialogs.confirmHtml('', title, callback, true)
+                .then(() => {
+                    const $dialog = $('.oc-dialog:visible');
+                    const $content = $('.oc-dialog-content');
+                    const $buttons = $('.oc-dialog-buttonrow').find('button');
+                    const $cancelButton = $buttons.eq(0);
+                    const $confirmButton = $buttons.eq(1);
 
-				const $cancelButton = $buttons.eq(0);
-				const $confirmButton = $buttons.eq(1);
+                    $content.empty();
 
-				$content.empty();
+                    $cancelButton.text(t('core', 'Cancel'));
+                    $confirmButton.text(t('core', 'Confirm'));
 
-				$cancelButton.text(t('core', 'Cancel'));
-				$confirmButton.text(t('core', 'Confirm'));
+                    init($dialog, $content, $cancelButton, $confirmButton);
+                });
+        },
 
-				init($dialog, $content, $cancelButton, $confirmButton);
-			});
-		},
+        extractDialog: function (filename, context, type) {
+            const self = this;
+            let dirName = filename.match('^([^\\.]+)')[0] || filename;
 
-		extractDialog: function (filename, context, type) {
-			const self = this;
+            const data = {
+                sourcePath: context.dir ? `${context.dir}/${filename}` : filename, targetDirName: dirName, type: type,
+            };
 
-			let dirName = filename;
-			const matches = dirName.match('^([^\\.]+)');
-			if (matches) {
-				dirName = matches[0];
-			}
+            const tr = context.fileList.findFileEl(filename);
+            context.fileList.showFileBusyState(tr, true);
 
-			const data = {
-				sourcePath: context.dir ? context.dir + '/' + filename : filename,
-				targetDirName: dirName,
-				type: type
-			};
+            const $input = $('<input/>').css('width', '100%');
 
-			const tr = context.fileList.findFileEl(filename);
-			context.fileList.showFileBusyState(tr, true);
+            self.createDialog(t('extract', 'Extract'), ($dialog, $content, _$cancelButton, $confirmButton) => {
+                $dialog.css({
+                    'min-width': '300px', width: '50%', 'max-width': '600px',
+                });
 
-			const $input = $('<input/>');
-			$input.css("width", "100%");
+                $confirmButton.text(t('extract', 'Extract'));
 
-			self.createDialog(
-				t('extract', 'Extract'),
-				($dialog, $content, _$cancelButton, $confirmButton) => {
-					$dialog.css("min-width", "300px");
-					$dialog.css("width", "50%");
-					$dialog.css("max-width", "600px");
+                const $text = $('<p/>').text(t('extract', 'Files will be extracted to this folder:'));
+                $content.append($text);
 
-					$confirmButton.text(t('extract', 'Extract'));
+                $input.attr('type', 'text').attr('id', 'file-name-input').attr('placeholder', t('extract', 'File Name')).attr('value', dirName);
+                $content.append($input);
 
-					const $text = $('<p/>');
-					$text.text(t('extract', 'Files will be extracted to this folder:'));
-					$content.append($text);
+                $input.on('input', () => {
+                    $confirmButton.prop('disabled', $input.val().trim() === '');
+                });
+            }, (result) => {
+                context.fileList.showFileBusyState(tr, false);
+                data.targetDirName = $input.val();
+                if (result) {
+                    $.ajax({
+                        type: 'POST',
+                        async: 'false',
+                        url: OC.filePath('extract', 'ajax', 'extract.php'),
+                        data: data,
+                        success: function (response) {
+                            console.log(response);
+                            if (response.code === 1) {
+                                context.fileList.reload();
+                            } else {
+                                context.fileList.showFileBusyState(tr, false);
+                                OC.dialogs.alert(t('extract', response.desc), t('extract', 'Error extracting ') + filename);
+                            }
+                        },
+                    });
+                }
+            },);
+        },
 
-					$input.attr('type', 'text').attr('id', 'file-name-input').attr('placeholder', t('extract', 'File Name')).attr('value', dirName);
-					$content.append($input);
+        init: function () {
+            const self = this;
 
-					$input.on('input', () => {
-						if($input.val().trim() === '') {
-							$confirmButton.prop("disabled", true);
-						} else {
-							$confirmButton.prop("disabled", false);
-						}
-					});
-				},
-				(result) => {
-					context.fileList.showFileBusyState(tr, false);
-					data.targetDirName = $input.val();
-					if (result) {
-						$.ajax({
-							type: "POST",
-							async: "false",
-							url: OC.filePath('extract', 'ajax', 'extract.php'),
-							data: data,
-							success: function (response) {
-								console.log(response);
-								if (response.code === 1) {
-									context.fileList.reload();
-								} else {
-									context.fileList.showFileBusyState(tr, false);
-									OC.dialogs.alert(
-										t('extract', response.desc),
-										t('extract', 'Error extracting ' ) + filename
-									);
-								}
-							}
-						});
-					}
-				},
-			);
-		},
+            const registerAction = function (name, mime) {
+                OCA.Files.fileActions.registerAction({
+                    name: name,
+                    displayName: t('extract', 'Extract'),
+                    mime: mime,
+                    permissions: OC.PERMISSION_UPDATE,
+                    type: OCA.Files.FileActions.TYPE_DROPDOWN,
+                    iconClass: 'icon-extract',
+                    actionHandler: function (filename, context) {
+                        self.extractDialog(filename, context, mime);
+                    },
+                });
+            };
 
-		init: function () {
-			const self = this;
+            // ZIP
+            registerAction('extractzip', 'application/zip');
 
-			// ZIP
-			OCA.Files.fileActions.registerAction({
-				name: 'extractzip',
-				displayName: t('extract', 'Extract'),
-				mime: 'application/zip',
-				permissions: OC.PERMISSION_UPDATE,
-				type: OCA.Files.FileActions.TYPE_DROPDOWN,
-				iconClass: 'icon-extract',
-				actionHandler: function (filename, context) {
-					self.extractDialog(filename, context, 'zip');
-				}
-			});
+            // RAR
+            registerAction('extractrar', 'application/x-rar-compressed');
 
-			// RAR
-			OCA.Files.fileActions.registerAction({
-				name: 'extractrar',
-				displayName: t('extract', 'Extract'),
-				mime: 'application/x-rar-compressed',
-				permissions: OC.PERMISSION_UPDATE,
-				type: OCA.Files.FileActions.TYPE_DROPDOWN,
-				iconClass: 'icon-extract',
-				actionHandler: function (filename, context) {
-					self.extractDialog(filename, context, 'rar');
-				}
-			});
+            // TAR and others
+            const types = ['application/x-tar', 'application/x-7z-compressed', 'application/x-bzip2', 'application/x-deb', 'application/x-gzip', 'application/x-compressed'];
+            types.forEach(type => {
+                registerAction('extractOthers', type);
+            });
+        },
+    };
 
-			// TAR
-			const types = ['application/x-tar', 'application/x-7z-compressed', 'application/x-bzip2', 'application/x-deb', 'application/x-gzip', 'application/x-compressed'];
-			types.forEach(type => {
-				OCA.Files.fileActions.registerAction({
-					name: 'extractOthers',
-					displayName: t('extract', 'Extract'),
-					mime: type,
-					permissions: OC.PERMISSION_UPDATE,
-					type: OCA.Files.FileActions.TYPE_DROPDOWN,
-					iconClass: 'icon-extract',
-					actionHandler: function (filename, context) {
-						self.extractDialog(filename, context, 'other');
-					}
-				});
-			});
-		},
-	}
-	actionsExtract.init();
+    actionsExtract.init();
 });
-

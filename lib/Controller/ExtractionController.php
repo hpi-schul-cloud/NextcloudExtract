@@ -185,7 +185,9 @@ class ExtractionController extends Controller {
 
 		// Path to the target folder in Nextclouds internal filesystem
 		$internalTargetPath = $this->getInternalTargetPath($internalDir, $targetDirName);
-
+		if (!$internalTargetPath) {
+			return new DataResponse(array('code' => StatusCode::ERROR, 'desc' => $this->l->t('Directory already exists')));
+		}
 
 		$extractTo = $this->getExtractionPath($absoluteFilePath, $internalDir, $targetDirName, $isExternal);
 
@@ -255,14 +257,14 @@ class ExtractionController extends Controller {
 		return trim(str_replace('../', '', $dir));
 	}
 
-	private function getInternalTargetPath(string $internalDir, string $targetDirName): string {
+	private function getInternalTargetPath(string $internalDir, string $targetDirName): string | null {
 		// Path to the target folder in Nextcloud's internal filesystem
 		$internalTargetPath = "$internalDir/$targetDirName";
 
 		// Error if the target folder already exists
 		$folderExists = Filesystem::is_dir($internalTargetPath);
 		if ($folderExists) {
-			return array('code' => StatusCode::ERROR, 'desc' => $this->l->t('Directory already exists'));
+			return null;
 		}
 		return $internalTargetPath;
 	}
