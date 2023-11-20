@@ -261,7 +261,7 @@ class ExtractionController extends Controller {
 	 * @return string sanitized path
 	 */
 	private function sanitizeTargetPath(string $dir): string {
-		return trim(preg_replace('/^(?:\.\./|/)+/', '', $dir));
+		return trim(preg_replace('#^(?:\.{0,2}\/|\/)+#', '', $dir));
 	}
 
 	/**
